@@ -11,16 +11,15 @@ if STRING:
 
 async def start_client():
     """Start all configured clients. Raise on failure so caller can handle shutdown."""
-    # Telethon
+    # Telethon (is_connected may be coroutine in some versions)
     try:
-        # Telethon's is_connected is coroutine in some versions; use await to be safe
         if not await telethon_client.is_connected():
             await telethon_client.start(bot_token=BOT_TOKEN)
         print("Telethon bot started...")
     except Exception as e:
         raise RuntimeError(f"Failed to start Telethon client: {e}") from e
 
-    # userbot (optional)
+    # optional userbot
     if userbot is not None:
         try:
             await userbot.start()
@@ -28,7 +27,7 @@ async def start_client():
         except Exception as e:
             raise RuntimeError(f"Userbot start failed: {e}") from e
 
-    # Pyrogram
+    # pyrogram app
     try:
         await pyro_app.start()
         print("Pyrogram app started...")
