@@ -1,30 +1,23 @@
-# shared_client.py (fixed)
+# shared_client.py (replace entire file)
 from telethon import TelegramClient
 from config import API_ID, API_HASH, BOT_TOKEN, STRING
 from pyrogram import Client
-import asyncio
 
-# create client instances (do not start them here)
 telethon_client = TelegramClient("telethonbot", API_ID, API_HASH)
 pyro_app = Client("pyrogrambot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 userbot = None
 if STRING:
-    # userbot uses session string if provided
     userbot = Client("4gbbot", api_id=API_ID, api_hash=API_HASH, session_string=STRING)
 
 async def start_client():
-    """
-    Start all configured clients. Raises RuntimeError on fatal startup errors
-    instead of exiting the process directly.
-    """
-    # Telethon bot (if configured)
+    """Start all configured clients. Raise on failure so caller can handle shutdown."""
+    # Telethon
     try:
-        # Telethon: ensure connection. start() is a coroutine
+        # Telethon's is_connected is coroutine in some versions; use await to be safe
         if not await telethon_client.is_connected():
             await telethon_client.start(bot_token=BOT_TOKEN)
         print("Telethon bot started...")
     except Exception as e:
-        # raise so caller can decide what to do (and allow graceful shutdown)
         raise RuntimeError(f"Failed to start Telethon client: {e}") from e
 
     # userbot (optional)
@@ -33,8 +26,33 @@ async def start_client():
             await userbot.start()
             print("Userbot started...")
         except Exception as e:
-            raise RuntimeError(f"Userbot session invalid or expired: {e}") from e
+            raise RuntimeError(f"Userbot start failed: {e}") from e
 
-    # Pyrogram bot/app
+    # Pyrogram
     try:
-        await
+        await pyro_app.start()
+        print("Pyrogram app started...")
+    except Exception as e:
+        raise RuntimeError(f"Failed to start Pyrogram app: {e}") from e
+
+    return telethon_client, pyro_app, userbot
+
+async def stop_client():
+    """Stop clients cleanly."""
+    try:
+        await pyro_app.stop()
+    except Exception:
+        pass
+
+    if userbot is not None:
+        try:
+            await userbot.stop()
+        except Exception:
+            pass
+
+    try:
+        await telethon_client.disconnect()
+    except Exception:
+        pass
+
+    print("All clients stopped.")
